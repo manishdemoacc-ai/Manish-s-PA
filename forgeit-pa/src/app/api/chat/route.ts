@@ -51,9 +51,12 @@ export async function POST(req: NextRequest) {
     const { data: history } = await supabase
   .from('conversation_messages')
   .select('role, content')
-  .eq('conversation_id', convId!)
+  .eq('conversation_id', convId)
   .order('created_at', { ascending: true })
   .limit(10)
+
+const typedHistory =
+  (history as { role: string; content: string }[]) ?? []
 
     // Save user message
     await ((supabase.from('conversation_messages') as any).insert({
@@ -68,12 +71,15 @@ export async function POST(req: NextRequest) {
 
     // Build messages array
     const messages: Anthropic.MessageParam[] = [
-      ...(history ?? []).map((h) => ({
-        role: h.role as 'user' | 'assistant',
-        content: h.content,
-      })),
-      { role: 'user' as const, content: message },
-    ]
+  ...typedHistory.map((h) => ({
+    role: h.role as 'user' | 'assistant',
+    content: h.content,
+  })),
+  {
+    role: 'user',
+    content: message,
+  },
+]
 
     // Call Claude
     const response = await client.messages.create({

@@ -1,5 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
-import { Inbox, CheckSquare, Calendar, TrendingUp, Clock, AlertCircle } from 'lucide-react'
+import { Inbox, CheckSquare, Calendar, TrendingUp, AlertCircle } from 'lucide-react'
+
+type RequestItem = {
+  id: string
+  title: string
+  category: string
+  priority: string
+  status: string
+  requester_name: string | null
+  created_at: string
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -17,11 +27,14 @@ export default async function DashboardPage() {
     supabase.from('requests').select('*', { count: 'exact', head: true }).in('priority', ['critical', 'high']).neq('status', 'completed'),
     supabase.from('tasks').select('*', { count: 'exact', head: true }).in('status', ['todo', 'in_progress']),
     supabase.from('meeting_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-    supabase.from('requests')
+    supabase
+      .from('requests')
       .select('id, title, category, priority, status, requester_name, created_at')
       .order('created_at', { ascending: false })
       .limit(5),
   ])
+
+  const requests = (recentRequests ?? []) as RequestItem[]
 
   const metrics = [
     { label: 'Total Requests', value: totalRequests ?? 0, icon: Inbox, color: 'text-blue-500' },
@@ -50,10 +63,11 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Your Forgeit PA command center</p>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          Your Forgeit PA command center
+        </p>
       </div>
 
-      {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {metrics.map((m) => (
           <div key={m.label} className="bg-card border border-border rounded-xl p-4">
@@ -66,22 +80,27 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Recent Requests */}
       <div className="bg-card border border-border rounded-xl">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-sm">Recent Requests</h2>
-          <a href="/admin/requests" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <a
+            href="/admin/requests"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
             View all →
           </a>
         </div>
+
         <div className="divide-y divide-border">
-          {(recentRequests ?? []).length === 0 ? (
+          {requests.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-sm text-muted-foreground">No requests yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">New requests will appear here when visitors use the public chat.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                New requests will appear here when visitors use the public chat.
+              </p>
             </div>
           ) : (
-            (recentRequests ?? []).map((req) => (
+            requests.map((req) => (
               <a
                 key={req.id}
                 href={`/admin/requests/${req.id}`}
@@ -90,14 +109,21 @@ export default async function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{req.title}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {req.requester_name ?? 'Unknown'} · {req.category.replace(/_/g, ' ')}
+                    {req.requester_name ?? 'Unknown'} ·{' '}
+                    {req.category.replace(/_/g, ' ')}
                   </p>
                 </div>
+
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[req.priority]}`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[req.priority]}`}
+                  >
                     {req.priority}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[req.status]}`}>
+
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[req.status]}`}
+                  >
                     {req.status}
                   </span>
                 </div>
@@ -107,9 +133,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h2 className="font-semibold text-sm mb-3">Quick Actions</h2>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
             { label: 'Add Knowledge', href: '/admin/knowledge', icon: '📚' },

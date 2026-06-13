@@ -14,6 +14,33 @@ const ChatRequestSchema = z.object({
   visitorEmail: z.string().email().optional(),
 })
 
+// ---------------------------------------------------------------------------
+// Explicit types for all Supabase query results
+// ---------------------------------------------------------------------------
+interface ConversationRow {
+  id: string
+  request_id: string | null
+  visitor_name: string | null
+  visitor_email: string | null
+  [key: string]: unknown
+}
+
+interface MessageRow {
+  role: string
+  content: string
+  created_at?: string
+}
+
+interface ProfileRow {
+  id: string
+}
+
+interface RequestRow {
+  id: string
+}
+
+// ---------------------------------------------------------------------------
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -30,18 +57,17 @@ export async function POST(req: NextRequest) {
     let convId = conversationId
 
     if (!convId) {
-      const { data: newConv, error: convError } = await (
-        (supabase.from('conversations') as any)
-          .insert({
-            session_id: sessionId,
-            channel: 'web',
-            visitor_name: visitorName,
-            visitor_email: visitorEmail,
-            visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
-          })
-          .select('id')
-          .single()
-      )
+      const { data: newConv, error: convError } = await (supabase
+        .from('conversations') as any)
+        .insert({
+          session_id: sessionId,
+          channel: 'web',
+          visitor_name: visitorName,
+          visitor_email: visitorEmail,
+          visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
+        })
+        .select('id')
+        .single() as { data: { id: string } | null; error: unknown }
 
       if (convError || !newConv) {
         return NextResponse.json(
@@ -53,26 +79,25 @@ export async function POST(req: NextRequest) {
       convId = newConv.id
     }
 
-    // Assert convId is defined here — guaranteed by the block above
+    // convId is guaranteed to be a string from here on
     const resolvedConvId = convId as string
 
     // Load conversation history (last 10 messages)
-    const { data: history } = await supabase
-      .from('conversation_messages')
+    const { data: historyData } = await (supabase
+      .from('conversation_messages') as any)
       .select('role, content')
       .eq('conversation_id', resolvedConvId)
       .order('created_at', { ascending: true })
-      .limit(10)
+      .limit(10) as { data: MessageRow[] | null }
 
-    const typedHistory =
-      (history as { role: string; content: string }[]) ?? []
+    const typedHistory: MessageRow[] = historyData ?? []
 
     // Save user message
-    await ((supabase.from('conversation_messages') as any).insert({
+    await (supabase.from('conversation_messages') as any).insert({
       conversation_id: resolvedConvId,
       role: 'user',
       content: message,
-    }))
+    })
 
     // Build AI context
     const { memories, knowledge } = await buildAIContext(message)
@@ -85,7 +110,7 @@ export async function POST(req: NextRequest) {
         content: h.content,
       })),
       {
-        role: 'user',
+        role: 'user' as const,
         content: message,
       },
     ]
@@ -104,27 +129,26 @@ export async function POST(req: NextRequest) {
       .join('')
 
     // Save assistant message
-    await ((supabase.from('conversation_messages') as any).insert({
+    await (supabase.from('conversation_messages') as any).insert({
       conversation_id: resolvedConvId,
       role: 'assistant',
       content: assistantMessage,
       tokens_used: response.usage.output_tokens,
-    }))
+    })
 
     // Check if we should auto-create a request
     // Simple heuristic: if conversation has 3+ user messages and no request yet
-    const { count } = await supabase
-      .from('conversation_messages')
+    const { count } = await (supabase
+      .from('conversation_messages') as any)
       .select('*', { count: 'exact', head: true })
       .eq('conversation_id', resolvedConvId)
-      .eq('role', 'user')
+      .eq('role', 'user') as { count: number | null }
 
-    // Renamed to existingConv to avoid shadowing the newConv variable above
     const { data: existingConv } = await (supabase
       .from('conversations') as any)
       .select('request_id, visitor_name, visitor_email')
       .eq('id', resolvedConvId)
-      .single() as { data: { request_id: string | null; visitor_name: string | null; visitor_email: string | null } | null }
+      .single() as { data: ConversationRow | null }
 
     if ((count ?? 0) >= 3 && existingConv && !existingConv.request_id) {
       // Auto-classify and create request in background
@@ -147,21 +171,21 @@ async function classifyAndCreateRequest(
   supabase: Awaited<ReturnType<typeof createServiceClient>>
 ) {
   // Get full conversation
-  const { data: messages } = await supabase
-    .from('conversation_messages')
+  const { data: messagesData } = await (supabase
+    .from('conversation_messages') as any)
     .select('role, content, created_at')
     .eq('conversation_id', convId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }) as { data: MessageRow[] | null }
 
-  const { data: conv } = await supabase
-    .from('conversations')
+  const { data: convData } = await (supabase
+    .from('conversations') as any)
     .select('*')
     .eq('id', convId)
-    .single()
+    .single() as { data: ConversationRow | null }
 
-  if (!messages || !conv) return
+  if (!messagesData || !convData) return
 
-  const conversationText = messages
+  const conversationText = messagesData
     .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
     .join('\n')
 
@@ -196,7 +220,7 @@ ${conversationText}`,
   try {
     const classification = JSON.parse(rawText.replace(/```json|```/g, '').trim())
 
-    const { data: request } = await ((supabase
+    const { data: requestData } = await (supabase
       .from('requests') as any)
       .insert({
         conversation_id: convId,
@@ -205,39 +229,39 @@ ${conversationText}`,
         category: classification.category ?? 'general_inquiry',
         priority: classification.priority ?? 'medium',
         status: 'new',
-        requester_name: classification.requester_name ?? conv.visitor_name,
-        requester_email: classification.requester_email ?? conv.visitor_email,
+        requester_name: classification.requester_name ?? convData.visitor_name,
+        requester_email: classification.requester_email ?? convData.visitor_email,
         ai_summary: classification.summary,
         ai_classification: classification,
         collected_data: classification.collected_data ?? {},
       })
       .select('id')
-      .single())
+      .single() as { data: RequestRow | null }
 
-    if (request) {
-      await ((supabase
+    if (requestData) {
+      await (supabase
         .from('conversations') as any)
-        .update({ request_id: request.id })
-        .eq('id', convId))
+        .update({ request_id: requestData.id })
+        .eq('id', convId)
 
-      // Notify admin
-      const { data: adminProfiles } = await supabase
-        .from('profiles')
+      // Notify admins
+      const { data: adminProfiles } = await (supabase
+        .from('profiles') as any)
         .select('id')
-        .eq('role', 'admin')
+        .eq('role', 'admin') as { data: ProfileRow[] | null }
 
       if (adminProfiles && adminProfiles.length > 0) {
-        await ((supabase.from('notifications') as any).insert(
+        await (supabase.from('notifications') as any).insert(
           adminProfiles.map((p) => ({
             recipient_id: p.id,
             type: 'request' as const,
             title: `New ${classification.priority} priority request`,
             body: classification.title,
-            action_url: `/admin/requests/${request.id}`,
-            reference_id: request.id,
+            action_url: `/admin/requests/${requestData.id}`,
+            reference_id: requestData.id,
             reference_type: 'request',
           }))
-        ))
+        )
       }
     }
   } catch (e) {

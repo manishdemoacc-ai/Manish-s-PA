@@ -2,6 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { KbEditor } from '@/components/knowledge/KbEditor'
 
+type KnowledgeEntry = {
+  id: string
+  title?: string
+  content?: string
+  use_count: number
+  [key: string]: any
+}
+
 export default async function KnowledgeEntryPage({
   params,
 }: {
@@ -10,11 +18,13 @@ export default async function KnowledgeEntryPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: entry } = await supabase
+  const { data } = await supabase
     .from('knowledge_base')
     .select('*')
     .eq('id', id)
     .single()
+
+  const entry = data as KnowledgeEntry | null
 
   if (!entry) notFound()
 
@@ -22,8 +32,11 @@ export default async function KnowledgeEntryPage({
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Edit Knowledge Entry</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Used {entry.use_count} times by the PA</p>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          Used {entry.use_count} times by the PA
+        </p>
       </div>
+
       <KbEditor entry={entry} />
     </div>
   )

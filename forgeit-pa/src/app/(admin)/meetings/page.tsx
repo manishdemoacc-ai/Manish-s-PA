@@ -158,16 +158,14 @@ function MeetingActions({ meetingId }: { meetingId: string }) {
       <form
         action={async () => {
           'use server'
+
           const { createClient } = await import('@/lib/supabase/server')
           const supabase = await createClient()
 
-          await supabase
-            .from('meeting_requests')
-            .update({
-              status: 'confirmed',
-              confirmed_at: new Date().toISOString(),
-            })
-            .eq('id', meetingId)
+          await ((supabase.from('meeting_requests') as any).update({
+            status: 'confirmed',
+            confirmed_at: new Date().toISOString(),
+          })).eq('id', meetingId)
         }}
       >
         <button
@@ -181,13 +179,13 @@ function MeetingActions({ meetingId }: { meetingId: string }) {
       <form
         action={async () => {
           'use server'
+
           const { createClient } = await import('@/lib/supabase/server')
           const supabase = await createClient()
 
-          await supabase
-            .from('meeting_requests')
-            .update({ status: 'rejected' })
-            .eq('id', meetingId)
+          await ((supabase.from('meeting_requests') as any).update({
+            status: 'rejected',
+          })).eq('id', meetingId)
         }}
       >
         <button

@@ -1,5 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/server'
 
+interface MemoryRow {
+  key: string
+  value: string
+  category: string
+}
+
+interface KnowledgeRow {
+  title: string
+  content: string
+  category: string
+}
+
 export async function buildAIContext(userMessage: string): Promise<{
   memories: string
   knowledge: string
@@ -7,36 +19,36 @@ export async function buildAIContext(userMessage: string): Promise<{
   const supabase = await createServiceClient()
 
   // Load high-importance active memories
-  const { data: memories } = await supabase
-    .from('memories')
+  const { data: memoriesData } = await (supabase
+    .from('memories') as any)
     .select('key, value, category')
     .eq('is_active', true)
     .order('importance', { ascending: false })
-    .limit(30)
+    .limit(30) as { data: MemoryRow[] | null }
 
   // Search knowledge base by trigram similarity
-  const { data: kb } = await supabase
-    .from('knowledge_base')
+  const { data: kb } = await (supabase
+    .from('knowledge_base') as any)
     .select('title, content, category')
     .eq('is_active', true)
     .textSearch('content', userMessage.split(' ').slice(0, 5).join(' | '), {
       type: 'websearch',
     })
-    .limit(5)
+    .limit(5) as { data: KnowledgeRow[] | null }
 
   // If text search returns nothing, just load top KB entries
-  let knowledgeEntries = kb
+  let knowledgeEntries: KnowledgeRow[] | null = kb
   if (!knowledgeEntries || knowledgeEntries.length === 0) {
-    const { data: fallbackKb } = await supabase
-      .from('knowledge_base')
+    const { data: fallbackKb } = await (supabase
+      .from('knowledge_base') as any)
       .select('title, content, category')
       .eq('is_active', true)
       .order('use_count', { ascending: false })
-      .limit(5)
+      .limit(5) as { data: KnowledgeRow[] | null }
     knowledgeEntries = fallbackKb
   }
 
-  const memoriesText = memories
+  const memoriesText = memoriesData
     ?.map((m) => `[${m.category}] ${m.key}: ${m.value}`)
     .join('\n') ?? 'No memories available.'
 

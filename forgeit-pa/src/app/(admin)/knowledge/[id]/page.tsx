@@ -4,10 +4,12 @@ import { KbEditor } from '@/components/knowledge/KbEditor'
 
 type KnowledgeEntry = {
   id: string
-  title?: string
-  content?: string
+  title: string
+  content: string
+  category: string
+  tags: string[]
+  is_active: boolean
   use_count: number
-  [key: string]: any
 }
 
 export default async function KnowledgeEntryPage({
@@ -26,12 +28,17 @@ export default async function KnowledgeEntryPage({
 
   const entry = data as KnowledgeEntry | null
 
-  if (!entry) notFound()
+  if (!entry) {
+    notFound()
+  }
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Edit Knowledge Entry</h1>
+        <h1 className="text-2xl font-semibold">
+          Edit Knowledge Entry
+        </h1>
+
         <p className="text-muted-foreground text-sm mt-0.5">
           Used {entry.use_count} times by the PA
         </p>

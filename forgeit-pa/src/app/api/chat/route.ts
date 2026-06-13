@@ -29,17 +29,17 @@ export async function POST(req: NextRequest) {
     // Get or create conversation
     let convId = conversationId
     if (!convId) {
-      const { data: conv, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          session_id: sessionId,
-          channel: 'web',
-          visitor_name: visitorName,
-          visitor_email: visitorEmail,
-          visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
-        })
-        .select('id')
-        .single()
+      const { data: conv, error: convError } = await ((supabase
+  .from('conversations') as any)
+  .insert({
+    session_id: sessionId,
+    channel: 'web',
+    visitor_name: visitorName,
+    visitor_email: visitorEmail,
+    visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
+  })
+  .select('id')
+  .single())
 
       if (convError || !conv) {
         return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
@@ -49,18 +49,18 @@ export async function POST(req: NextRequest) {
 
     // Load conversation history (last 10 messages)
     const { data: history } = await supabase
-      .from('conversation_messages')
-      .select('role, content')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: true })
-      .limit(10)
+  .from('conversation_messages')
+  .select('role, content')
+  .eq('conversation_id', convId)
+  .order('created_at', { ascending: true })
+  .limit(10)
 
     // Save user message
-    await supabase.from('conversation_messages').insert({
-      conversation_id: convId,
-      role: 'user',
-      content: message,
-    })
+    await ((supabase.from('conversation_messages') as any).insert({
+  conversation_id: convId,
+  role: 'user',
+  content: message,
+}))
 
     // Build AI context
     const { memories, knowledge } = await buildAIContext(message)
@@ -89,12 +89,12 @@ export async function POST(req: NextRequest) {
       .join('')
 
     // Save assistant message
-    await supabase.from('conversation_messages').insert({
-      conversation_id: convId,
-      role: 'assistant',
-      content: assistantMessage,
-      tokens_used: response.usage.output_tokens,
-    })
+    await ((supabase.from('conversation_messages') as any).insert({
+  conversation_id: convId,
+  role: 'assistant',
+  content: assistantMessage,
+  tokens_used: response.usage.output_tokens,
+}))
 
     // Check if we should auto-create a request
     // Simple heuristic: if conversation has 4+ user messages and no request yet
@@ -177,29 +177,29 @@ ${conversationText}`,
   try {
     const classification = JSON.parse(rawText.replace(/```json|```/g, '').trim())
 
-    const { data: request } = await supabase
-      .from('requests')
-      .insert({
-        conversation_id: convId,
-        title: classification.title ?? 'New Request',
-        description: classification.summary,
-        category: classification.category ?? 'general_inquiry',
-        priority: classification.priority ?? 'medium',
-        status: 'new',
-        requester_name: classification.requester_name ?? conv.visitor_name,
-        requester_email: classification.requester_email ?? conv.visitor_email,
-        ai_summary: classification.summary,
-        ai_classification: classification,
-        collected_data: classification.collected_data ?? {},
-      })
-      .select('id')
-      .single()
+    const { data: request } = await ((supabase
+  .from('requests') as any)
+  .insert({
+    conversation_id: convId,
+    title: classification.title ?? 'New Request',
+    description: classification.summary,
+    category: classification.category ?? 'general_inquiry',
+    priority: classification.priority ?? 'medium',
+    status: 'new',
+    requester_name: classification.requester_name ?? conv.visitor_name,
+    requester_email: classification.requester_email ?? conv.visitor_email,
+    ai_summary: classification.summary,
+    ai_classification: classification,
+    collected_data: classification.collected_data ?? {},
+  })
+  .select('id')
+  .single())
 
     if (request) {
-      await supabase
-        .from('conversations')
-        .update({ request_id: request.id })
-        .eq('id', convId)
+      await ((supabase
+  .from('conversations') as any)
+  .update({ request_id: request.id })
+  .eq('id', convId))
 
       // Notify admin
       const { data: adminProfiles } = await supabase
@@ -208,18 +208,18 @@ ${conversationText}`,
         .eq('role', 'admin')
 
       if (adminProfiles && adminProfiles.length > 0) {
-        await supabase.from('notifications').insert(
+        await ((supabase.from('notifications') as any).insert(
           adminProfiles.map((p) => ({
-            recipient_id: p.id,
-            type: 'request' as const,
-            title: `New ${classification.priority} priority request`,
-            body: classification.title,
-            action_url: `/admin/requests/${request.id}`,
-            reference_id: request.id,
-            reference_type: 'request',
-          }))
-        )
-      }
+          recipient_id: p.id,
+        type: 'request' as const,
+        title: `New ${classification.priority} priority request`,
+        body: classification.title,
+        action_url: `/admin/requests/${request.id}`,
+          reference_id: request.id,
+        reference_type: 'request',
+  }))
+))
+    }
     }
   } catch (e) {
     console.error('Classification parse error:', e)

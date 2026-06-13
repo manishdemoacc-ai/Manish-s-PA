@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     const { data: history } = await supabase
   .from('conversation_messages')
   .select('role, content')
-  .eq('conversation_id', convId)
+  .eq('conversation_id', convId!)
   .order('created_at', { ascending: true })
   .limit(10)
 

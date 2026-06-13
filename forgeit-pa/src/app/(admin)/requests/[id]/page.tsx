@@ -10,12 +10,34 @@ const priorityColors: Record<string, string> = {
   medium: 'priority-medium',
   low: 'priority-low',
 }
+
 const statusColors: Record<string, string> = {
   new: 'status-new',
   reviewing: 'status-reviewing',
   waiting: 'status-waiting',
   completed: 'status-completed',
   rejected: 'status-rejected',
+}
+
+type RequestData = {
+  id: string
+  title: string
+  category: string
+  priority: string
+  status: string
+  conversation_id?: string | null
+  requester_name?: string | null
+  requester_email?: string | null
+  requester_phone?: string | null
+  created_at: string
+  ai_summary?: string | null
+  collected_data?: Record<string, unknown> | null
+}
+
+type ConversationMessage = {
+  role: string
+  content: string
+  created_at: string
 }
 
 export default async function RequestDetailPage({
@@ -26,25 +48,30 @@ export default async function RequestDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: req } = await supabase
+  const { data } = await supabase
     .from('requests')
     .select('*')
     .eq('id', id)
     .single()
 
+  const req = data as RequestData | null
+
   if (!req) notFound()
 
-  const { data: messages } = req.conversation_id
-    ? await supabase
-        .from('conversation_messages')
-        .select('role, content, created_at')
-        .eq('conversation_id', req.conversation_id)
-        .order('created_at', { ascending: true })
-    : { data: [] }
+  let messages: ConversationMessage[] = []
+
+  if (req.conversation_id) {
+    const { data: messageData } = await (supabase
+      .from('conversation_messages') as any)
+      .select('role, content, created_at')
+      .eq('conversation_id', req.conversation_id)
+      .order('created_at', { ascending: true })
+
+    messages = (messageData ?? []) as ConversationMessage[]
+  }
 
   return (
     <div className="space-y-5 max-w-3xl">
-      {/* Back */}
       <Link
         href="/admin/requests"
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -53,15 +80,22 @@ export default async function RequestDetailPage({
         All Requests
       </Link>
 
-      {/* Header */}
       <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h1 className="text-lg font-semibold leading-tight">{req.title}</h1>
+          <h1 className="text-lg font-semibold leading-tight">
+            {req.title}
+          </h1>
+
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${priorityColors[req.priority]}`}>
+            <span
+              className={`text-xs px-2 py-1 rounded-full font-medium ${priorityColors[req.priority]}`}
+            >
               {req.priority}
             </span>
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[req.status]}`}>
+
+            <span
+              className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[req.status]}`}
+            >
               {req.status}
             </span>
           </div>
@@ -74,77 +108,108 @@ export default async function RequestDetailPage({
               <span>{req.requester_name}</span>
             </div>
           )}
+
           {req.requester_email && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Mail className="w-3.5 h-3.5" />
               <span>{req.requester_email}</span>
             </div>
           )}
+
           {req.requester_phone && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Phone className="w-3.5 h-3.5" />
               <span>{req.requester_phone}</span>
             </div>
           )}
+
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Calendar className="w-3.5 h-3.5" />
-            <span>{format(new Date(req.created_at), 'MMM d, yyyy HH:mm')}</span>
+            <span>
+              {format(new Date(req.created_at), 'MMM d, yyyy HH:mm')}
+            </span>
           </div>
         </div>
 
         <div className="mt-3 text-xs text-muted-foreground capitalize">
-          Category: <span className="text-foreground font-medium">{req.category.replace(/_/g, ' ')}</span>
+          Category:{' '}
+          <span className="text-foreground font-medium">
+            {req.category.replace(/_/g, ' ')}
+          </span>
         </div>
       </div>
 
-      {/* AI Summary */}
       {req.ai_summary && (
         <div className="bg-card border border-border rounded-xl p-4">
           <h2 className="text-sm font-semibold mb-2">AI Summary</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">{req.ai_summary}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {req.ai_summary}
+          </p>
         </div>
       )}
 
-      {/* Collected Data */}
-      {req.collected_data && Object.keys(req.collected_data).length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <h2 className="text-sm font-semibold mb-3">Collected Information</h2>
-          <dl className="space-y-2">
-            {Object.entries(req.collected_data).map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-sm">
-                <dt className="text-muted-foreground capitalize flex-shrink-0 w-32">
-                  {k.replace(/_/g, ' ')}:
-                </dt>
-                <dd className="font-medium">{String(v)}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
+      {req.collected_data &&
+        Object.keys(req.collected_data).length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold mb-3">
+              Collected Information
+            </h2>
 
-      {/* Status Update */}
+            <dl className="space-y-2">
+              {Object.entries(req.collected_data).map(([k, v]) => (
+                <div key={k} className="flex gap-2 text-sm">
+                  <dt className="text-muted-foreground capitalize flex-shrink-0 w-32">
+                    {k.replace(/_/g, ' ')}:
+                  </dt>
+                  <dd className="font-medium">{String(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
       <div className="bg-card border border-border rounded-xl p-4">
         <h2 className="text-sm font-semibold mb-3">Update Status</h2>
-        <form action={async (formData: FormData) => {
-          'use server'
-          const { createClient } = await import('@/lib/supabase/server')
-          const sb = await createClient()
-          const status = formData.get('status') as string
-          await sb.from('requests').update({ status }).eq('id', id)
-        }}>
+
+        <form
+          action={async (formData: FormData) => {
+            'use server'
+
+            const { createClient } = await import(
+              '@/lib/supabase/server'
+            )
+
+            const sb = await createClient()
+
+            const status = formData.get('status') as string
+
+            await ((sb.from('requests') as any)
+              .update({ status })
+              .eq('id', id))
+          }}
+        >
           <div className="flex gap-2">
             <select
               name="status"
               defaultValue={req.status}
-              className="bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
             >
-              {['new', 'reviewing', 'waiting', 'completed', 'rejected'].map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {[
+                'new',
+                'reviewing',
+                'waiting',
+                'completed',
+                'rejected',
+              ].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
+
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
             >
               Update
             </button>
@@ -152,17 +217,23 @@ export default async function RequestDetailPage({
         </form>
       </div>
 
-      {/* Conversation */}
-      {messages && messages.length > 0 && (
+      {messages.length > 0 && (
         <div className="bg-card border border-border rounded-xl">
           <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold">Conversation ({messages.length} messages)</h2>
+            <h2 className="text-sm font-semibold">
+              Conversation ({messages.length} messages)
+            </h2>
           </div>
+
           <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                className={`flex gap-2 ${
+                  msg.role === 'user'
+                    ? 'flex-row-reverse'
+                    : ''
+                }`}
               >
                 <div
                   className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
@@ -171,9 +242,15 @@ export default async function RequestDetailPage({
                       : 'bg-muted text-foreground'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <p className="whitespace-pre-wrap">
+                    {msg.content}
+                  </p>
+
                   <p className="text-xs opacity-60 mt-1">
-                    {format(new Date(msg.created_at), 'HH:mm')}
+                    {format(
+                      new Date(msg.created_at),
+                      'HH:mm'
+                    )}
                   </p>
                 </div>
               </div>

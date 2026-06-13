@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     let convId = conversationId
 
     if (!convId) {
-      const { data: conv, error: convError } = await (
+      const { data: newConv, error: convError } = await (
         (supabase.from('conversations') as any)
           .insert({
             session_id: sessionId,
@@ -43,14 +43,14 @@ export async function POST(req: NextRequest) {
           .single()
       )
 
-      if (convError || !conv) {
+      if (convError || !newConv) {
         return NextResponse.json(
           { error: 'Failed to create conversation' },
           { status: 500 }
         )
       }
 
-      convId = conv.id
+      convId = newConv.id
     }
 
     // Assert convId is defined here — guaranteed by the block above
@@ -119,13 +119,14 @@ export async function POST(req: NextRequest) {
       .eq('conversation_id', resolvedConvId)
       .eq('role', 'user')
 
-    const { data: conv } = await supabase
-      .from('conversations')
+    // Renamed to existingConv to avoid shadowing the newConv variable above
+    const { data: existingConv } = await (supabase
+      .from('conversations') as any)
       .select('request_id, visitor_name, visitor_email')
       .eq('id', resolvedConvId)
-      .single()
+      .single() as { data: { request_id: string | null; visitor_name: string | null; visitor_email: string | null } | null }
 
-    if ((count ?? 0) >= 3 && conv && !conv.request_id) {
+    if ((count ?? 0) >= 3 && existingConv && !existingConv.request_id) {
       // Auto-classify and create request in background
       classifyAndCreateRequest(resolvedConvId, supabase).catch(console.error)
     }

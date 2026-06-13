@@ -55,37 +55,55 @@ export default function TasksPage() {
   }
 
   async function createTask() {
-    if (!newTask.title.trim()) { toast.error('Title required'); return }
-    const { error } = await ((supabase.from('tasks') as any).insert({
-  title: newTask.title,
-  description: newTask.description || null,
-  priority: newTask.priority,
-  due_date: newTask.due_date || null,
-  status: 'todo',
-}))
-    if (error) { toast.error('Failed to create task'); return }
-    toast.success('Task created')
-    setShowForm(false)
-    setNewTask({ title: '', description: '', priority: 'medium', due_date: '' })
-    loadTasks()
+  if (!newTask.title.trim()) {
+    toast.error('Title required')
+    return
   }
+
+  const { error } = await ((supabase.from('tasks') as any).insert({
+    title: newTask.title,
+    description: newTask.description || null,
+    priority: newTask.priority,
+    due_date: newTask.due_date || null,
+    status: 'todo',
+  }))
+
+  if (error) {
+    toast.error('Failed to create task')
+    return
+  }
+
+  toast.success('Task created')
+  setShowForm(false)
+  setNewTask({
+    title: '',
+    description: '',
+    priority: 'medium',
+    due_date: '',
+  })
+
+  loadTasks()
+}
 
   async function updateStatus(id: string, status: string) {
-    await ((supabase.from('tasks') as any).update({
-  status,
-  completed_at: status === 'done' ? new Date().toISOString() : null,
-  }))
-    }).eq('id', id)
-    setTasks((prev) => prev.map((t) => t.id === id ? { ...t, status } : t))
-  }
+  await ((supabase.from('tasks') as any)
+    .update({
+      status,
+      completed_at:
+        status === 'done'
+          ? new Date().toISOString()
+          : null,
+    })
+    .eq('id', id))
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
-      </div>
+  setTasks((prev) =>
+    prev.map((t) =>
+      t.id === id
+        ? { ...t, status }
+        : t
     )
-  }
+  )
+}
 
   return (
     <div className="space-y-5">

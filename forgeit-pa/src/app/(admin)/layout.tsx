@@ -5,10 +5,10 @@ import AdminTopBar from '@/components/admin/TopBar'
 
 type Profile = {
   id: string
-  role: 'admin' | 'member' | string
-  full_name?: string
-  email?: string
-  avatar_url?: string
+  email: string
+  role: string
+  full_name?: string | null
+  avatar_url?: string | null
   [key: string]: any
 }
 
@@ -33,7 +33,11 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
-  const profile = data as Profile | null
+  const profile = {
+    email: '',
+    role: '',
+    ...data,
+  } as Profile
 
   if (!profile || !['admin', 'member'].includes(profile.role)) {
     redirect('/')

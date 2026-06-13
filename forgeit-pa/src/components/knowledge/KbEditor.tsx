@@ -48,17 +48,16 @@ export function KbEditor({ entry }: Props) {
       .filter(Boolean)
 
     if (isNew) {
-      const { error } = await supabase.from('knowledge_base').insert({
+      const { error } = await (supabase.from('knowledge_base') as any).insert({
         title, content, category, tags, is_active: isActive,
-      })
+      }) as { error: unknown }
       if (error) { toast.error('Failed to save'); setIsSaving(false); return }
       toast.success('Entry created')
       router.push('/admin/knowledge')
     } else {
-      const { error } = await supabase
-        .from('knowledge_base')
+      const { error } = await (supabase.from('knowledge_base') as any)
         .update({ title, content, category, tags, is_active: isActive })
-        .eq('id', entry!.id)
+        .eq('id', entry!.id) as { error: unknown }
       if (error) { toast.error('Failed to save'); setIsSaving(false); return }
       toast.success('Entry updated')
       router.refresh()
@@ -69,7 +68,7 @@ export function KbEditor({ entry }: Props) {
   async function handleDelete() {
     if (!entry || !confirm('Delete this entry? The PA will no longer use it.')) return
     setIsDeleting(true)
-    await supabase.from('knowledge_base').delete().eq('id', entry.id)
+    await (supabase.from('knowledge_base') as any).delete().eq('id', entry.id)
     toast.success('Entry deleted')
     router.push('/admin/knowledge')
   }

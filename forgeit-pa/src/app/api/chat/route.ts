@@ -27,19 +27,27 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient()
 
     // Get or create conversation
-    let convId = conversationId
-    if (!convId) {
-      const { data: conv, error: convError } = await ((supabase
-  .from('conversations') as any)
-  .insert({
-    session_id: sessionId,
-    channel: 'web',
-    visitor_name: visitorName,
-    visitor_email: visitorEmail,
-    visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
-  })
-  .select('id')
-  .single())
+    let convId = body.conversationId
+
+if (!convId) {
+  const { data: conv, error: convError } = await supabase
+    .from('conversations')
+    .insert({
+      session_id: sessionId,
+      channel: 'web',
+      visitor_name: visitorName,
+      visitor_email: visitorEmail,
+      visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
+    })
+    .select('id')
+    .single()
+
+  if (convError || !conv) {
+    throw convError
+  }
+
+  convId = conv.id
+}
 
       if (convError || !conv) {
         return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })

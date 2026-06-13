@@ -42,20 +42,20 @@ export default function SettingsPage() {
   async function handleSave() {
     if (!settings) return
     setIsSaving(true)
-    const { error } = await supabase
-      .from('settings')
-      .update({
-        pa_name: settings.pa_name,
-        pa_tagline: settings.pa_tagline,
-        founder_intro: settings.founder_intro,
-        auto_reply_enabled: settings.auto_reply_enabled,
-        auto_classify: settings.auto_classify,
-        email_notifications: settings.email_notifications,
-        push_notifications: settings.push_notifications,
-        working_hours_start: settings.working_hours_start,
-        working_hours_end: settings.working_hours_end,
-      })
-      .eq('id', settings.id)
+    const { error } = await (supabase
+  .from('settings') as any)
+  .update({
+    pa_name: settings.pa_name,
+    pa_tagline: settings.pa_tagline,
+    founder_intro: settings.founder_intro,
+    auto_reply_enabled: settings.auto_reply_enabled,
+    auto_classify: settings.auto_classify,
+    email_notifications: settings.email_notifications,
+    push_notifications: settings.push_notifications,
+    working_hours_start: settings.working_hours_start,
+    working_hours_end: settings.working_hours_end,
+  })
+  .eq('id', settings.id)
 
     if (error) toast.error('Failed to save settings')
     else toast.success('Settings saved')

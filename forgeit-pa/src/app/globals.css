@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.5rem;
+
+    /* Forgeit PA Brand */
+    --brand: 262 80% 60%;
+    --brand-foreground: 0 0% 100%;
+    --brand-muted: 262 40% 95%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 5.5%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 5.5%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+
+    --brand: 262 80% 65%;
+    --brand-foreground: 0 0% 100%;
+    --brand-muted: 262 40% 15%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Better focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Chat message animations */
+  .message-enter {
+    animation: message-slide-in 0.25s ease-out;
+  }
+
+  @keyframes message-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Typing indicator */
+  .typing-dot {
+    animation: typing-bounce 1.4s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Priority badges */
+  .priority-critical { @apply bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400; }
+  .priority-high     { @apply bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400; }
+  .priority-medium   { @apply bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400; }
+  .priority-low      { @apply bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400; }
+
+  /* Status badges */
+  .status-new        { @apply bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400; }
+  .status-reviewing  { @apply bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400; }
+  .status-waiting    { @apply bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400; }
+  .status-completed  { @apply bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400; }
+  .status-rejected   { @apply bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400; }
+}

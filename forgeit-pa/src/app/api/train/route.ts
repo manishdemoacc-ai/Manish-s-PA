@@ -9,17 +9,31 @@ const TrainRequestSchema = z.object({
   instruction: z.string().min(5).max(1000),
 })
 
+interface ProfileRow {
+  role: string
+}
+
+interface MemoryRow {
+  key: string
+  value: string
+  category: string
+  importance: number
+  source: string
+  is_active: boolean
+  [key: string]: unknown
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: profile } = await (supabase
+    .from('profiles') as any)
     .select('role')
     .eq('id', user.id)
-    .single()
+    .single() as { data: ProfileRow | null }
 
   if (profile?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -38,9 +52,7 @@ export async function POST(req: NextRequest) {
       {
         role: 'user',
         content: `You are extracting memory rules for an executive assistant AI.
-
 The founder said: "${instruction}"
-
 Extract one or more memory entries. Return ONLY a valid JSON array:
 [
   {
@@ -50,7 +62,6 @@ Extract one or more memory entries. Return ONLY a valid JSON array:
     "importance": 1-10
   }
 ]
-
 No explanation. Only JSON.`,
       },
     ],
@@ -63,11 +74,11 @@ No explanation. Only JSON.`,
 
   try {
     const memories = JSON.parse(rawText.replace(/```json|```/g, '').trim())
+    const results: MemoryRow[] = []
 
-    const results = []
     for (const mem of memories) {
-      const { data, error } = await supabase
-        .from('memories')
+      const { data, error } = await (supabase
+        .from('memories') as any)
         .upsert(
           {
             key: mem.key,
@@ -80,7 +91,7 @@ No explanation. Only JSON.`,
           { onConflict: 'key' }
         )
         .select()
-        .single()
+        .single() as { data: MemoryRow | null; error: unknown }
 
       if (!error && data) results.push(data)
     }

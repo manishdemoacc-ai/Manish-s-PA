@@ -3,17 +3,37 @@ import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/Sidebar'
 import AdminTopBar from '@/components/admin/TopBar'
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+type Profile = {
+  id: string
+  role: 'admin' | 'member' | string
+  full_name?: string
+  email?: string
+  avatar_url?: string
+  [key: string]: any
+}
+
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const { data: profile } = await supabase
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  const profile = data as Profile | null
 
   if (!profile || !['admin', 'member'].includes(profile.role)) {
     redirect('/')
@@ -22,8 +42,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <AdminSidebar profile={profile} />
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminTopBar profile={profile} />
+
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 md:p-6 max-w-7xl mx-auto">
             {children}

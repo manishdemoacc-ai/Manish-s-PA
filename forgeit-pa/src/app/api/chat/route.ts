@@ -53,11 +53,14 @@ export async function POST(req: NextRequest) {
       convId = conv.id
     }
 
+    // Assert convId is defined here — guaranteed by the block above
+    const resolvedConvId = convId as string
+
     // Load conversation history (last 10 messages)
     const { data: history } = await supabase
       .from('conversation_messages')
       .select('role, content')
-      .eq('conversation_id', convId)
+      .eq('conversation_id', resolvedConvId)
       .order('created_at', { ascending: true })
       .limit(10)
 
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     // Save user message
     await ((supabase.from('conversation_messages') as any).insert({
-      conversation_id: convId,
+      conversation_id: resolvedConvId,
       role: 'user',
       content: message,
     }))
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     // Save assistant message
     await ((supabase.from('conversation_messages') as any).insert({
-      conversation_id: convId,
+      conversation_id: resolvedConvId,
       role: 'assistant',
       content: assistantMessage,
       tokens_used: response.usage.output_tokens,
@@ -113,23 +116,23 @@ export async function POST(req: NextRequest) {
     const { count } = await supabase
       .from('conversation_messages')
       .select('*', { count: 'exact', head: true })
-      .eq('conversation_id', convId)
+      .eq('conversation_id', resolvedConvId)
       .eq('role', 'user')
 
     const { data: conv } = await supabase
       .from('conversations')
       .select('request_id, visitor_name, visitor_email')
-      .eq('id', convId)
+      .eq('id', resolvedConvId)
       .single()
 
     if ((count ?? 0) >= 3 && conv && !conv.request_id) {
       // Auto-classify and create request in background
-      classifyAndCreateRequest(convId, supabase).catch(console.error)
+      classifyAndCreateRequest(resolvedConvId, supabase).catch(console.error)
     }
 
     return NextResponse.json({
       message: assistantMessage,
-      conversationId: convId,
+      conversationId: resolvedConvId,
       tokensUsed: response.usage.output_tokens,
     })
   } catch (error) {

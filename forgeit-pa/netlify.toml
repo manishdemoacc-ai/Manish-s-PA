@@ -2,6 +2,8 @@
   command = "rm -rf .next && npm run build"
   publish = ".next"
 
+# force rebuild
+
 [build.environment]
   NODE_VERSION = "20"
 

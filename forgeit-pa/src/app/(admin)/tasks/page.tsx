@@ -56,13 +56,13 @@ export default function TasksPage() {
 
   async function createTask() {
     if (!newTask.title.trim()) { toast.error('Title required'); return }
-    const { error } = await supabase.from('tasks').insert({
-      title: newTask.title,
-      description: newTask.description || null,
-      priority: newTask.priority,
-      due_date: newTask.due_date || null,
-      status: 'todo',
-    })
+    const { error } = await ((supabase.from('tasks') as any).insert({
+  title: newTask.title,
+  description: newTask.description || null,
+  priority: newTask.priority,
+  due_date: newTask.due_date || null,
+  status: 'todo',
+}))
     if (error) { toast.error('Failed to create task'); return }
     toast.success('Task created')
     setShowForm(false)
@@ -71,9 +71,10 @@ export default function TasksPage() {
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from('tasks').update({
-      status,
-      completed_at: status === 'done' ? new Date().toISOString() : null,
+    await ((supabase.from('tasks') as any).update({
+  status,
+  completed_at: status === 'done' ? new Date().toISOString() : null,
+  }))
     }).eq('id', id)
     setTasks((prev) => prev.map((t) => t.id === id ? { ...t, status } : t))
   }

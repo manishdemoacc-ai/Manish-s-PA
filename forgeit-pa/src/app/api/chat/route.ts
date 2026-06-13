@@ -27,63 +27,49 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient()
 
     // Get or create conversation
-    let convId = body.conversationId
+    let convId = conversationId
 
-if (!convId) {
-  const { data: conv, error: convError } = await (
-    (supabase.from('conversations') as any)
-      .insert({
-        session_id: sessionId,
-        channel: 'web',
-        visitor_name: visitorName,
-        visitor_email: visitorEmail,
-        visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
-      })
-      .select('id')
-      .single()
-  )
+    if (!convId) {
+      const { data: conv, error: convError } = await (
+        (supabase.from('conversations') as any)
+          .insert({
+            session_id: sessionId,
+            channel: 'web',
+            visitor_name: visitorName,
+            visitor_email: visitorEmail,
+            visitor_ip: req.headers.get('x-forwarded-for') ?? undefined,
+          })
+          .select('id')
+          .single()
+      )
 
-  if (convError || !conv) {
-    return NextResponse.json(
-      { error: 'Failed to create conversation' },
-      { status: 500 }
-    )
-  }
+      if (convError || !conv) {
+        return NextResponse.json(
+          { error: 'Failed to create conversation' },
+          { status: 500 }
+        )
+      }
 
-  convId = conv.id
-}
-
-  if (convError) {
-    throw convError
-  }
-
-  convId = conv.id
-}
-  if (convError || !conv) {
-    throw convError
-  }
-
-  convId = conv.id
-}
-
+      convId = conv.id
+    }
 
     // Load conversation history (last 10 messages)
     const { data: history } = await supabase
-  .from('conversation_messages')
-  .select('role, content')
-  .eq('conversation_id', convId)
-  .order('created_at', { ascending: true })
-  .limit(10)
+      .from('conversation_messages')
+      .select('role, content')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true })
+      .limit(10)
 
-const typedHistory =
-  (history as { role: string; content: string }[]) ?? []
+    const typedHistory =
+      (history as { role: string; content: string }[]) ?? []
 
     // Save user message
     await ((supabase.from('conversation_messages') as any).insert({
-  conversation_id: convId,
-  role: 'user',
-  content: message,
-}))
+      conversation_id: convId,
+      role: 'user',
+      content: message,
+    }))
 
     // Build AI context
     const { memories, knowledge } = await buildAIContext(message)
@@ -91,15 +77,15 @@ const typedHistory =
 
     // Build messages array
     const messages: Anthropic.MessageParam[] = [
-  ...typedHistory.map((h) => ({
-    role: h.role as 'user' | 'assistant',
-    content: h.content,
-  })),
-  {
-    role: 'user',
-    content: message,
-  },
-]
+      ...typedHistory.map((h) => ({
+        role: h.role as 'user' | 'assistant',
+        content: h.content,
+      })),
+      {
+        role: 'user',
+        content: message,
+      },
+    ]
 
     // Call Claude
     const response = await client.messages.create({
@@ -116,14 +102,14 @@ const typedHistory =
 
     // Save assistant message
     await ((supabase.from('conversation_messages') as any).insert({
-  conversation_id: convId,
-  role: 'assistant',
-  content: assistantMessage,
-  tokens_used: response.usage.output_tokens,
-}))
+      conversation_id: convId,
+      role: 'assistant',
+      content: assistantMessage,
+      tokens_used: response.usage.output_tokens,
+    }))
 
     // Check if we should auto-create a request
-    // Simple heuristic: if conversation has 4+ user messages and no request yet
+    // Simple heuristic: if conversation has 3+ user messages and no request yet
     const { count } = await supabase
       .from('conversation_messages')
       .select('*', { count: 'exact', head: true })
@@ -152,7 +138,10 @@ const typedHistory =
   }
 }
 
-async function classifyAndCreateRequest(convId: string, supabase: Awaited<ReturnType<typeof createServiceClient>>) {
+async function classifyAndCreateRequest(
+  convId: string,
+  supabase: Awaited<ReturnType<typeof createServiceClient>>
+) {
   // Get full conversation
   const { data: messages } = await supabase
     .from('conversation_messages')
@@ -204,28 +193,28 @@ ${conversationText}`,
     const classification = JSON.parse(rawText.replace(/```json|```/g, '').trim())
 
     const { data: request } = await ((supabase
-  .from('requests') as any)
-  .insert({
-    conversation_id: convId,
-    title: classification.title ?? 'New Request',
-    description: classification.summary,
-    category: classification.category ?? 'general_inquiry',
-    priority: classification.priority ?? 'medium',
-    status: 'new',
-    requester_name: classification.requester_name ?? conv.visitor_name,
-    requester_email: classification.requester_email ?? conv.visitor_email,
-    ai_summary: classification.summary,
-    ai_classification: classification,
-    collected_data: classification.collected_data ?? {},
-  })
-  .select('id')
-  .single())
+      .from('requests') as any)
+      .insert({
+        conversation_id: convId,
+        title: classification.title ?? 'New Request',
+        description: classification.summary,
+        category: classification.category ?? 'general_inquiry',
+        priority: classification.priority ?? 'medium',
+        status: 'new',
+        requester_name: classification.requester_name ?? conv.visitor_name,
+        requester_email: classification.requester_email ?? conv.visitor_email,
+        ai_summary: classification.summary,
+        ai_classification: classification,
+        collected_data: classification.collected_data ?? {},
+      })
+      .select('id')
+      .single())
 
     if (request) {
       await ((supabase
-  .from('conversations') as any)
-  .update({ request_id: request.id })
-  .eq('id', convId))
+        .from('conversations') as any)
+        .update({ request_id: request.id })
+        .eq('id', convId))
 
       // Notify admin
       const { data: adminProfiles } = await supabase
@@ -236,16 +225,16 @@ ${conversationText}`,
       if (adminProfiles && adminProfiles.length > 0) {
         await ((supabase.from('notifications') as any).insert(
           adminProfiles.map((p) => ({
-          recipient_id: p.id,
-        type: 'request' as const,
-        title: `New ${classification.priority} priority request`,
-        body: classification.title,
-        action_url: `/admin/requests/${request.id}`,
-          reference_id: request.id,
-        reference_type: 'request',
-  }))
-))
-    }
+            recipient_id: p.id,
+            type: 'request' as const,
+            title: `New ${classification.priority} priority request`,
+            body: classification.title,
+            action_url: `/admin/requests/${request.id}`,
+            reference_id: request.id,
+            reference_type: 'request',
+          }))
+        ))
+      }
     }
   } catch (e) {
     console.error('Classification parse error:', e)

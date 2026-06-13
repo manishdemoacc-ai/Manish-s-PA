@@ -9,7 +9,6 @@ type Profile = {
   role: string
   full_name?: string | null
   avatar_url?: string | null
-  [key: string]: any
 }
 
 export default async function AdminLayout({
@@ -33,11 +32,9 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
-  const profile = {
-    email: '',
-    role: '',
-    ...data,
-  } as Profile
+  const profile: Profile | null = data
+    ? (data as Profile)
+    : null
 
   if (!profile || !['admin', 'member'].includes(profile.role)) {
     redirect('/')

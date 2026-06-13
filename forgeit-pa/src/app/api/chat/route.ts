@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient()
 
     // Get or create conversation
-    if (!convId) {
+    let convId = body.conversationId
+
+if (!convId) {
   const { data: conv, error: convError } = await (
     (supabase.from('conversations') as any)
       .insert({
@@ -40,6 +42,16 @@ export async function POST(req: NextRequest) {
       .select('id')
       .single()
   )
+
+  if (convError || !conv) {
+    return NextResponse.json(
+      { error: 'Failed to create conversation' },
+      { status: 500 }
+    )
+  }
+
+  convId = conv.id
+}
 
   if (convError) {
     throw convError
@@ -54,11 +66,6 @@ export async function POST(req: NextRequest) {
   convId = conv.id
 }
 
-      if (convError || !conv) {
-        return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
-      }
-      convId = conv.id
-    }
 
     // Load conversation history (last 10 messages)
     const { data: history } = await supabase

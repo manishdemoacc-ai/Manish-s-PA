@@ -43,47 +43,69 @@ export default function MemoryPage() {
   }
 
   async function updateMemory(id: string, value: string) {
-    const { error } = await supabase
-      .from('memories')
-      .update({ value })
-      .eq('id', id)
+  const { error } = await ((supabase.from('memories') as any)
+    .update({ value })
+    .eq('id', id))
 
-    if (error) { toast.error('Failed to update'); return }
-    toast.success('Memory updated')
-    setEditingId(null)
-    loadMemories()
+  if (error) {
+    toast.error('Failed to update')
+    return
   }
+
+  toast.success('Memory updated')
+  setEditingId(null)
+  loadMemories()
+}
 
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from('memories').update({ is_active: !current }).eq('id', id)
-    setMemories((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, is_active: !current } : m))
-    )
-  }
+  await ((supabase.from('memories') as any)
+    .update({ is_active: !current })
+    .eq('id', id))
+
+  setMemories((prev) =>
+    prev.map((m) => (m.id === id ? { ...m, is_active: !current } : m))
+  )
+}
 
   async function deleteMemory(id: string) {
-    if (!confirm('Delete this memory? The PA will forget this.')) return
-    await supabase.from('memories').delete().eq('id', id)
-    setMemories((prev) => prev.filter((m) => m.id !== id))
-    toast.success('Memory deleted')
-  }
+  if (!confirm('Delete this memory? The PA will forget this.')) return
+
+  await ((supabase.from('memories') as any)
+    .delete()
+    .eq('id', id))
+
+  setMemories((prev) => prev.filter((m) => m.id !== id))
+  toast.success('Memory deleted')
+}
 
   async function addMemory() {
-    if (!newMemory.key.trim() || !newMemory.value.trim()) {
-      toast.error('Key and value are required')
-      return
-    }
-    const key = newMemory.key.trim().replace(/\s+/g, '_').toLowerCase()
-    const { error } = await supabase.from('memories').upsert(
-      { ...newMemory, key, source: 'manual' },
-      { onConflict: 'key' }
-    )
-    if (error) { toast.error('Failed to add. Key may already exist.'); return }
-    toast.success('Memory added')
-    setShowAddForm(false)
-    setNewMemory({ key: '', value: '', category: 'general', importance: 7 })
-    loadMemories()
+  if (!newMemory.key.trim() || !newMemory.value.trim()) {
+    toast.error('Key and value are required')
+    return
   }
+
+  const key = newMemory.key.trim().replace(/\s+/g, '_').toLowerCase()
+
+  const { error } = await ((supabase.from('memories') as any).upsert(
+    { ...newMemory, key, source: 'manual' },
+    { onConflict: 'key' }
+  ))
+
+  if (error) {
+    toast.error('Failed to add. Key may already exist.')
+    return
+  }
+
+  toast.success('Memory added')
+  setShowAddForm(false)
+  setNewMemory({
+    key: '',
+    value: '',
+    category: 'general',
+    importance: 7,
+  })
+  loadMemories()
+}
 
   const grouped = CATEGORIES.reduce((acc, cat) => {
     acc[cat] = memories.filter((m) => m.category === cat)
